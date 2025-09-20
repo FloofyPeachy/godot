@@ -105,6 +105,7 @@ class DisplayServerWayland : public DisplayServer {
 		Callable window_event_callback;
 		Callable input_event_callback;
 		Callable drop_files_callback;
+		Callable drop_data_callback;
 		Callable input_text_callback;
 
 		String title;
@@ -269,6 +270,7 @@ public:
 	virtual void window_set_input_event_callback(const Callable &p_callable, WindowID p_window_id = MAIN_WINDOW_ID) override;
 	virtual void window_set_input_text_callback(const Callable &p_callable, WindowID p_window_id = MAIN_WINDOW_ID) override;
 	virtual void window_set_drop_files_callback(const Callable &p_callable, WindowID p_window_id = MAIN_WINDOW_ID) override;
+	virtual void window_set_drop_data_callback(const Callable &p_callable, WindowID p_window_id = MAIN_WINDOW_ID) override;
 
 	virtual int window_get_current_screen(WindowID p_window_id = MAIN_WINDOW_ID) const override;
 	virtual void window_set_current_screen(int p_screen, WindowID p_window_id = MAIN_WINDOW_ID) override;

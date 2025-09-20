@@ -1869,6 +1869,8 @@ bool Viewport::_gui_drop(Control *p_at_control, Point2 p_at_pos, bool p_just_che
 	while (ci) {
 		Control *control = Object::cast_to<Control>(ci);
 		if (control) {
+			print_line(p_at_pos.x);
+			print_line(p_at_pos.y);
 			if (control->can_drop_data(p_at_pos, section_root->gui.drag_data)) {
 				if (!p_just_check) {
 					control->drop_data(p_at_pos, section_root->gui.drag_data);
@@ -2791,6 +2793,29 @@ void Viewport::push_text_input(const String &p_text) {
 	if (gui.key_focus) {
 		gui.key_focus->call("set_text", p_text);
 	}
+}
+
+bool Viewport::can_system_drop(const Vector2i &p_position, const String &p_mime_type) {
+
+	Window *receiving_window = get_window();
+	if (receiving_window != NULL) {
+		Vector2 pos = p_position;
+		pos -= receiving_window->get_position(); // make window-local
+		pos = receiving_window->get_final_transform().affine_inverse().xform(pos);
+		Control *over = gui_find_control(p_position);
+		print_line(pos);
+		if (over != nullptr) {
+			print_line(over->get_name());
+			return over->can_system_drop_data(p_position, p_mime_type);
+		}
+	}
+
+
+	return false;
+}
+
+void Viewport::push_drop(const String &p_mime, const Variant &p_data) {
+
 }
 
 Viewport::SubWindowResize Viewport::_sub_window_get_resize_margin(Window *p_subwindow, const Point2 &p_point) {

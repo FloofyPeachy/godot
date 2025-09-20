@@ -195,6 +195,10 @@ private:
 		Callable forward_can_drop;
 		Callable forward_drop;
 
+		Callable forward_system_drag;
+		Callable forward_system_can_drop;
+		Callable forward_system_drop;
+
 		// Positioning and sizing.
 
 		LayoutMode stored_layout_mode = LayoutMode::LAYOUT_MODE_POSITION;
@@ -406,6 +410,10 @@ protected:
 	GDVIRTUAL2(_drop_data, Vector2, Variant)
 	GDVIRTUAL1RC(Object *, _make_custom_tooltip, String)
 
+	GDVIRTUAL1R(Variant, _get_system_drag_data, Vector2)
+	GDVIRTUAL2RC(bool, _can_system_drop_data, Vector2, String)
+	GDVIRTUAL3(_drop_system_data, Vector2, String, Variant)
+
 	GDVIRTUAL0RC(String, _accessibility_get_contextual_info);
 	GDVIRTUAL1RC(String, _get_accessibility_container_name, const Node *)
 
@@ -583,6 +591,12 @@ public:
 	void force_drag(const Variant &p_data, Control *p_control);
 	void accessibility_drag();
 	void accessibility_drop();
+
+	virtual void set_system_drag_forwarding(const Callable &p_system_drag, const Callable &p_system_can_drop, const Callable &p_system_drop);
+	virtual Variant get_system_drag_data(const Point2 &p_point);
+	virtual bool can_system_drop_data(const Point2& p_point, const String& p_mime);
+	virtual void system_drop_data(const Point2 &p_point, const String &p_mime, const Variant &p_data);
+
 	bool is_drag_successful() const;
 
 	// Focus.

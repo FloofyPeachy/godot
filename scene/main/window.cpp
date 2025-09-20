@@ -1333,6 +1333,7 @@ void Window::_update_window_callbacks() {
 	DisplayServer::get_singleton()->window_set_input_event_callback(callable_mp(this, &Window::_window_input), window_id);
 	DisplayServer::get_singleton()->window_set_input_text_callback(callable_mp(this, &Window::_window_input_text), window_id);
 	DisplayServer::get_singleton()->window_set_drop_files_callback(callable_mp(this, &Window::_window_drop_files), window_id);
+	DisplayServer::get_singleton()->window_set_drop_data_callback(callable_mp(this, &Window::_window_drop_data), window_id);
 }
 
 void Window::set_force_native(bool p_force_native) {
@@ -1842,6 +1843,12 @@ void Window::_window_input_text(const String &p_text) {
 void Window::_window_drop_files(const Vector<String> &p_files) {
 	emit_signal(SNAME("files_dropped"), p_files);
 }
+
+bool Window::_window_drop_data(const Vector2i &p_position, const String &p_mime, const Variant &p_data) {
+	return can_system_drop(p_position, p_mime);
+}
+
+
 
 Viewport *Window::get_parent_viewport() const {
 	ERR_READ_THREAD_GUARD_V(nullptr);

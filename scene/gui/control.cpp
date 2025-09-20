@@ -2121,6 +2121,71 @@ void Control::accessibility_drop() {
 	queue_accessibility_update();
 }
 
+//External/System drag and drop handling.
+
+void Control::set_system_drag_forwarding(const Callable &p_system_drag, const Callable &p_system_can_drop, const Callable &p_system_drop) {
+	ERR_MAIN_THREAD_GUARD;
+	data.forward_system_drag = p_system_drag;
+	data.forward_system_can_drop = p_system_can_drop;
+	data.forward_system_drop = p_system_drop;
+}
+
+Variant Control::get_system_drag_data(const Point2 &p_point) {
+	ERR_READ_THREAD_GUARD_V(Variant());
+	Variant ret;
+	if (data.forward_system_drag.is_valid()) {
+		Variant p = p_point;
+		const Variant *vp[1] = { &p };
+		Callable::CallError ce;
+		data.forward_system_drag.callp((const Variant **)vp, 1, ret, ce);
+		if (ce.error != Callable::CallError::CALL_OK) {
+			ERR_FAIL_V_MSG(Variant(), "Error calling forwarded method from 'get_system_drag_data': " + Variant::get_callable_error_text(data.forward_system_drag, (const Variant **)vp, 1, ce) + ".");
+		}
+		return ret;
+	}
+
+	GDVIRTUAL_CALL(_get_system_drag_data, p_point, ret);
+	return ret;
+}
+
+bool Control::can_system_drop_data(const Point2 &p_point, const String &p_mime) {
+	ERR_READ_THREAD_GUARD_V(false);
+	if (data.forward_system_can_drop.is_valid()) {
+		Variant ret;
+		Variant p = p_point;
+		Variant mime = p_mime;
+
+		const Variant *vp[2] = { &p, &mime };
+		Callable::CallError ce;
+		data.forward_system_can_drop.callp((const Variant **)vp, 2, ret, ce);
+		if (ce.error != Callable::CallError::CALL_OK) {
+			ERR_FAIL_V_MSG(Variant(), "Error calling forwarded method from 'can_system_drop_data': " + Variant::get_callable_error_text(data.forward_system_can_drop, (const Variant **)vp, 2, ce) + ".");
+		}
+		return ret;
+	}
+
+	bool ret = false;
+	GDVIRTUAL_CALL(_can_system_drop_data, p_point, p_mime, ret);
+	return ret;
+}
+
+void Control::system_drop_data(const Point2 &p_point, const String &p_mime, const Variant &p_data) {
+	ERR_READ_THREAD_GUARD;
+	if (data.forward_system_drop.is_valid()) {
+		Variant ret;
+		Variant p = p_point;
+		const Variant *vp[2] = { &p, &p_data };
+		Callable::CallError ce;
+		data.forward_system_drop.callp((const Variant **)vp, 2, ret, ce);
+		if (ce.error != Callable::CallError::CALL_OK) {
+			ERR_FAIL_MSG("Error calling forwarded method from 'system_drop_data': " + Variant::get_callable_error_text(data.forward_system_drop, (const Variant **)vp, 2, ce) + ".");
+		}
+		return;
+	}
+
+	GDVIRTUAL_CALL(_drop_system_data, p_point, p_mime, p_data);
+}
+
 String Control::get_accessibility_container_name(const Node *p_node) const {
 	String ret;
 	if (GDVIRTUAL_CALL(_get_accessibility_container_name, p_node, ret)) {
@@ -4392,6 +4457,10 @@ void Control::_bind_methods() {
 	GDVIRTUAL_BIND(_can_drop_data, "at_position", "data");
 	GDVIRTUAL_BIND(_drop_data, "at_position", "data");
 	GDVIRTUAL_BIND(_make_custom_tooltip, "for_text");
+
+	GDVIRTUAL_BIND(_get_system_drag_data, "position");
+	GDVIRTUAL_BIND(_can_system_drop_data, "position", "mime");
+	GDVIRTUAL_BIND(_drop_system_data, "position", "mime", "data");
 
 	GDVIRTUAL_BIND(_accessibility_get_contextual_info);
 	GDVIRTUAL_BIND(_get_accessibility_container_name, "node");

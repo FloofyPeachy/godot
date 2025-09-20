@@ -33,7 +33,7 @@
 #ifdef WAYLAND_ENABLED
 
 #include "key_mapping_xkb.h"
-
+#include "key_mapping_xkb.h"
 #ifdef SOWRAP_ENABLED
 #include "wayland/dynwrappers/wayland-client-core-so_wrap.h"
 #include "wayland/dynwrappers/wayland-cursor-so_wrap.h"
@@ -132,6 +132,15 @@ public:
 
 	public:
 		Vector<String> files;
+	};
+
+	class DropDataEventMessage : public WindowMessage {
+		GDSOFTCLASS(DropDataEventMessage, WindowMessage);
+	public:
+		DisplayServer::SystemDragStatus status;
+		Point2 position;
+		String mime_type;
+		Variant data;
 	};
 
 	class IMEUpdateEventMessage : public WindowMessage {
@@ -648,6 +657,7 @@ private:
 
 	static void _wl_data_device_on_data_offer(void *data, struct wl_data_device *wl_data_device, struct wl_data_offer *id);
 	static void _wl_data_device_on_enter(void *data, struct wl_data_device *wl_data_device, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id);
+	void _accept_mime(String &p_mime);
 	static void _wl_data_device_on_leave(void *data, struct wl_data_device *wl_data_device);
 	static void _wl_data_device_on_motion(void *data, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y);
 	static void _wl_data_device_on_drop(void *data, struct wl_data_device *wl_data_device);
@@ -989,6 +999,7 @@ public:
 	Mutex &mutex = thread_data.mutex;
 
 	struct wl_display *get_wl_display() const;
+	void accept_mime(String &p_mime);
 
 	// Core Wayland utilities for integrating with our own data structures.
 	static bool wl_proxy_is_godot(struct wl_proxy *p_proxy);
@@ -1033,7 +1044,7 @@ public:
 	WindowState *window_get_state(DisplayServer::WindowID p_window_id);
 
 	void window_start_resize(DisplayServer::WindowResizeEdge p_edge, DisplayServer::WindowID p_window);
-	virtual void window_show_system_menu(WindowID p_window = MAIN_WINDOW_ID) override;
+	void window_show_system_menu(DisplayServer::WindowID p_window);
 
 	void window_set_max_size(DisplayServer::WindowID p_window_id, const Size2i &p_size);
 	void window_set_min_size(DisplayServer::WindowID p_window_id, const Size2i &p_size);

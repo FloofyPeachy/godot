@@ -30,6 +30,8 @@
 
 #include "wayland_thread.h"
 
+#include "thirdparty/linuxbsd_headers/wayland/wayland-client-protocol.h"
+
 #ifdef WAYLAND_ENABLED
 
 #ifdef __FreeBSD__
@@ -144,6 +146,7 @@ int WaylandThread::_allocate_shm_file(size_t size) {
 
 // Return the content of a wl_data_offer.
 Vector<uint8_t> WaylandThread::_wl_data_offer_read(struct wl_display *p_display, const char *p_mime, struct wl_data_offer *p_offer) {
+
 	if (!p_offer) {
 		return Vector<uint8_t>();
 	}
@@ -2159,19 +2162,39 @@ void WaylandThread::_wl_data_device_on_enter(void *data, struct wl_data_device *
 	if (!ws) {
 		return;
 	}
-
 	SeatState *ss = (SeatState *)data;
+	WaylandThread *wayland_thread = ss->wayland_thread;
+
 	ERR_FAIL_NULL(ss);
 
 	ss->dnd_id = ws->id;
-
 	ss->dnd_enter_serial = serial;
 	ss->wl_data_offer_dnd = id;
 
+	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
+	if (os) {
+
+		Ref<DropDataEventMessage> msg;
+		msg.instantiate();
+		msg->status = DisplayServer::SystemDragStatus::SYSTEM_DRAG_ENTER;
+		msg->id = ss->dnd_id;
+		msg->position = ss->pointer_data_buffer.position;
+		msg->mime_type = "text/uri-list";
+
+		wayland_thread->push_message(msg);
+	}
 	// Godot only supports DnD file copying for now.
 	wl_data_offer_accept(id, serial, "text/uri-list");
 	wl_data_offer_set_actions(id, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+
+
 }
+void WaylandThread::accept_mime(String &p_mime) {
+	SeatState *ss = wl_seat_get_seat_state(wl_seat_current);
+	wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, p_mime.utf8().get_data());
+	wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+}
+
 
 void WaylandThread::_wl_data_device_on_leave(void *data, struct wl_data_device *wl_data_device) {
 	SeatState *ss = (SeatState *)data;
@@ -2186,6 +2209,20 @@ void WaylandThread::_wl_data_device_on_leave(void *data, struct wl_data_device *
 }
 
 void WaylandThread::_wl_data_device_on_motion(void *data, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y) {
+	SeatState *ss = (SeatState *)data;
+	WaylandThread *wayland_thread = ss->wayland_thread;
+	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
+	if (os) {
+
+		Ref<DropDataEventMessage> msg;
+		msg.instantiate();
+		msg->status = DisplayServer::SystemDragStatus::SYSTEM_DRAG_ENTER;
+		msg->id = ss->dnd_id;
+		msg->position = Point2(wl_fixed_to_double(x), wl_fixed_to_double(y));
+		msg->mime_type = "text/uri-list";
+
+		wayland_thread->push_message(msg);
+	}
 }
 
 void WaylandThread::_wl_data_device_on_drop(void *data, struct wl_data_device *wl_data_device) {
@@ -2240,12 +2277,15 @@ void WaylandThread::_wl_data_offer_on_offer(void *data, struct wl_data_offer *wl
 	if (os) {
 		os->mime_types.insert(String::utf8(mime_type));
 	}
+
 }
 
 void WaylandThread::_wl_data_offer_on_source_actions(void *data, struct wl_data_offer *wl_data_offer, uint32_t source_actions) {
+	print_line("on source action!!");
 }
 
 void WaylandThread::_wl_data_offer_on_action(void *data, struct wl_data_offer *wl_data_offer, uint32_t dnd_action) {
+	print_line("on action!!");
 }
 
 void WaylandThread::_wl_data_source_on_target(void *data, struct wl_data_source *wl_data_source, const char *mime_type) {
@@ -3060,6 +3100,8 @@ void WaylandThread::_poll_events_thread(void *p_data) {
 struct wl_display *WaylandThread::get_wl_display() const {
 	return wl_display;
 }
+
+
 
 // NOTE: Stuff like libdecor can (and will) register foreign proxies which
 // aren't formatted as we like. This method is needed to detect whether a proxy

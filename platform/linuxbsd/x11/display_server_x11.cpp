@@ -2244,6 +2244,14 @@ void DisplayServerX11::window_set_drop_files_callback(const Callable &p_callable
 	wd.drop_files_callback = p_callable;
 }
 
+void DisplayServerX11::window_set_drop_data_callback(const Callable &p_callable, WindowID p_window) {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND(!windows.has(p_window));
+	WindowData &wd = windows[p_window];
+	//wd.drop_files_callback = p_callable;
+}
+
 int DisplayServerX11::window_get_current_screen(WindowID p_window) const {
 	_THREAD_SAFE_METHOD_
 

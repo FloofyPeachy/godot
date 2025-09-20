@@ -434,6 +434,15 @@ public:
 		WINDOW_FLAG_MAXIMIZE_DISABLED_BIT = (1 << WINDOW_FLAG_MAXIMIZE_DISABLED),
 	};
 
+	enum SystemDragStatus {
+		SYSTEM_DRAG_ENTER,
+		SYSTEM_DRAG_MOTION,
+		SYSTEM_DRAG_DROPPED,
+		SYSTEM_DRAG_EXIT,
+	};
+public:
+
+
 	virtual WindowID create_sub_window(WindowMode p_mode, VSyncMode p_vsync_mode, uint32_t p_flags, const Rect2i &p_rect = Rect2i(), bool p_exclusive = false, WindowID p_transient_parent = INVALID_WINDOW_ID);
 	virtual void show_window(WindowID p_id);
 	virtual void delete_sub_window(WindowID p_id);
@@ -467,6 +476,9 @@ public:
 	virtual void window_set_input_text_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) = 0;
 
 	virtual void window_set_drop_files_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) = 0;
+
+	virtual void window_set_drop_data_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) = 0;
+
 
 	virtual void window_set_title(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) = 0;
 	virtual Size2i window_get_title_size(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) const { return Size2i(); }

@@ -105,7 +105,7 @@ public:
 
 	void window_set_input_text_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) override {}
 	void window_set_drop_files_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) override {}
-
+	void window_set_drop_data_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) override {}
 	void window_set_title(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) override {}
 
 	void window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window = MAIN_WINDOW_ID) override {}

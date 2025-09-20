@@ -1062,6 +1062,14 @@ void DisplayServerWayland::window_set_drop_files_callback(const Callable &p_call
 	windows[p_window_id].drop_files_callback = p_callable;
 }
 
+void DisplayServerWayland::window_set_drop_data_callback(const Callable &p_callable, DisplayServer::WindowID p_window_id) {
+	MutexLock mutex_lock(wayland_thread.mutex);
+
+	ERR_FAIL_COND(!windows.has(p_window_id));
+
+	windows[p_window_id].drop_data_callback = p_callable;
+}
+
 int DisplayServerWayland::window_get_current_screen(DisplayServer::WindowID p_window_id) const {
 	ERR_FAIL_COND_V(!windows.has(p_window_id), INVALID_SCREEN);
 	// Standard Wayland APIs don't support getting the screen of a window.
@@ -1695,6 +1703,35 @@ void DisplayServerWayland::process_events() {
 				wd.drop_files_callback.callp((const Variant **)&v_args, 1, ret, ce);
 				if (ce.error != Callable::CallError::CALL_OK) {
 					ERR_PRINT(vformat("Failed to execute drop files callback: %s.", Variant::get_callable_error_text(wd.drop_files_callback, v_args, 1, ce)));
+				}
+			}
+			continue;
+		}
+		Ref<WaylandThread::DropDataEventMessage> dropdata_msg = msg;
+		if (dropdata_msg.is_valid()) {
+			WindowData wd = windows[dropdata_msg->id];
+
+			if (wd.drop_data_callback.is_valid()) {
+				Variant v_pos = dropdata_msg->position;
+				Variant v_mime = dropdata_msg->mime_type;
+				Variant v_data;
+				const Variant *v_args[3] = { &v_pos, &v_mime, &v_data };
+				Variant ret;
+				Callable::CallError ce;
+
+				wd.drop_data_callback.callp((const Variant **)&v_args, 3, ret, ce);
+
+				if (ce.error != Callable::CallError::CALL_OK) {
+					ERR_PRINT(vformat("Failed to execute drop data callback: %s.", Variant::get_callable_error_text(wd.drop_data_callback, v_args, 1, ce)));
+				}
+
+				if (ret.get_type() == Variant::BOOL) {
+					if (ret.operator bool()) {
+						print_line("Can use this!!");
+						wayland_thread.accept_mime(dropdata_msg->mime_type);
+					} else {
+
+					}
 				}
 			}
 			continue;
