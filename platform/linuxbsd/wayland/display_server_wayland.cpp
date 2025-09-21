@@ -1712,10 +1712,15 @@ void DisplayServerWayland::process_events() {
 			WindowData wd = windows[dropdata_msg->id];
 
 			if (wd.drop_data_callback.is_valid()) {
+				Vector<DragDrop::DataType> types = dropdata_msg->type;
 				Variant v_pos = dropdata_msg->position;
-				Variant v_mime = dropdata_msg->mime_type;
+				Array arr;
+				for (int i = 0; i < types.size(); i++) {
+					arr.push_back(types[i]);
+				}
+				Variant v_types = arr;
 				Variant v_data;
-				const Variant *v_args[3] = { &v_pos, &v_mime, &v_data };
+				const Variant *v_args[3] = { &v_pos, &v_types, &v_data };
 				Variant ret;
 				Callable::CallError ce;
 
@@ -1726,12 +1731,7 @@ void DisplayServerWayland::process_events() {
 				}
 
 				if (ret.get_type() == Variant::BOOL) {
-					if (ret.operator bool()) {
-						print_line("Can use this!!");
-						wayland_thread.accept_mime(dropdata_msg->mime_type);
-					} else {
-
-					}
+					wayland_thread.accept_type(dropdata_msg->type, ret.operator bool());
 				}
 			}
 			continue;

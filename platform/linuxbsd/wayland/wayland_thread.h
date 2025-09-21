@@ -34,6 +34,7 @@
 
 #include "key_mapping_xkb.h"
 #include "key_mapping_xkb.h"
+#include "core/os/drag_drop.h"
 #ifdef SOWRAP_ENABLED
 #include "wayland/dynwrappers/wayland-client-core-so_wrap.h"
 #include "wayland/dynwrappers/wayland-cursor-so_wrap.h"
@@ -137,9 +138,9 @@ public:
 	class DropDataEventMessage : public WindowMessage {
 		GDSOFTCLASS(DropDataEventMessage, WindowMessage);
 	public:
-		DisplayServer::SystemDragStatus status;
+		DragDrop::SystemDropStatus status;
 		Point2 position;
-		String mime_type;
+		Vector<DragDrop::DataType> type;
 		Variant data;
 	};
 
@@ -999,7 +1000,7 @@ public:
 	Mutex &mutex = thread_data.mutex;
 
 	struct wl_display *get_wl_display() const;
-	void accept_mime(String &p_mime);
+	void accept_type(Vector<DragDrop::DataType> data_types, const bool& accepted);
 
 	// Core Wayland utilities for integrating with our own data structures.
 	static bool wl_proxy_is_godot(struct wl_proxy *p_proxy);

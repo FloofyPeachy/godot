@@ -1844,11 +1844,9 @@ void Window::_window_drop_files(const Vector<String> &p_files) {
 	emit_signal(SNAME("files_dropped"), p_files);
 }
 
-bool Window::_window_drop_data(const Vector2i &p_position, const String &p_mime, const Variant &p_data) {
-	return can_system_drop(p_position, p_mime);
+bool Window::_window_drop_data(const Vector2i &p_position, const Array & p_types, const Variant &p_data) {
+	return can_system_drop(p_position, p_types);
 }
-
-
 
 Viewport *Window::get_parent_viewport() const {
 	ERR_READ_THREAD_GUARD_V(nullptr);

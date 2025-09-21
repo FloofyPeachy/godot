@@ -32,6 +32,7 @@
 
 #include "core/math/transform_2d.h"
 #include "core/object/gdvirtual.gen.inc"
+#include "core/os/drag_drop.h"
 #include "scene/main/canvas_item.h"
 #include "scene/main/timer.h"
 #include "scene/resources/theme.h"
@@ -411,8 +412,8 @@ protected:
 	GDVIRTUAL1RC(Object *, _make_custom_tooltip, String)
 
 	GDVIRTUAL1R(Variant, _get_system_drag_data, Vector2)
-	GDVIRTUAL2RC(bool, _can_system_drop_data, Vector2, String)
-	GDVIRTUAL3(_drop_system_data, Vector2, String, Variant)
+	GDVIRTUAL2RC(bool, _can_system_drop_data, Vector2, Array)
+	GDVIRTUAL3(_drop_system_data, Vector2, DragDrop::DataType, Variant)
 
 	GDVIRTUAL0RC(String, _accessibility_get_contextual_info);
 	GDVIRTUAL1RC(String, _get_accessibility_container_name, const Node *)
@@ -594,8 +595,8 @@ public:
 
 	virtual void set_system_drag_forwarding(const Callable &p_system_drag, const Callable &p_system_can_drop, const Callable &p_system_drop);
 	virtual Variant get_system_drag_data(const Point2 &p_point);
-	virtual bool can_system_drop_data(const Point2& p_point, const String& p_mime);
-	virtual void system_drop_data(const Point2 &p_point, const String &p_mime, const Variant &p_data);
+	virtual bool can_system_drop_data(const Vector2i& p_position, const Array& p_data_types);
+	virtual void system_drop_data(const Point2& p_point, const DragDrop::DataType& p_data_type, const Variant& p_data);
 
 	bool is_drag_successful() const;
 

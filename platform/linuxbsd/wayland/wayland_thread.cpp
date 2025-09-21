@@ -30,6 +30,7 @@
 
 #include "wayland_thread.h"
 
+#include "core/os/drag_drop.h"
 #include "thirdparty/linuxbsd_headers/wayland/wayland-client-protocol.h"
 
 #ifdef WAYLAND_ENABLED
@@ -2174,25 +2175,39 @@ void WaylandThread::_wl_data_device_on_enter(void *data, struct wl_data_device *
 	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
 	if (os) {
 
-		Ref<DropDataEventMessage> msg;
-		msg.instantiate();
-		msg->status = DisplayServer::SystemDragStatus::SYSTEM_DRAG_ENTER;
-		msg->id = ss->dnd_id;
-		msg->position = ss->pointer_data_buffer.position;
-		msg->mime_type = "text/uri-list";
+			Ref<DropDataEventMessage> msg;
+			msg.instantiate();
+			msg->status = DragDrop::SystemDropStatus::DRAG_ENTER;
+			msg->id = ss->dnd_id;
+			msg->position = ss->pointer_data_buffer.position;
+			msg->type = DragDrop::get_singleton()->natives_to_types_linux(os->mime_types);
+			wayland_thread->push_message(msg);
 
-		wayland_thread->push_message(msg);
 	}
+
 	// Godot only supports DnD file copying for now.
-	wl_data_offer_accept(id, serial, "text/uri-list");
-	wl_data_offer_set_actions(id, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+	//TODO: regular file ones.
+	/*wl_data_offer_accept(id, serial, "text/uri-list");
+	wl_data_offer_set_actions(id, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);*/
 
 
 }
-void WaylandThread::accept_mime(String &p_mime) {
+
+void WaylandThread::accept_type(Vector<DragDrop::DataType> data_types, const bool &accepted) {
 	SeatState *ss = wl_seat_get_seat_state(wl_seat_current);
-	wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, p_mime.utf8().get_data());
-	wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+	Vector<String> types =  DragDrop::get_singleton()->types_to_natives_linux(data_types);
+
+	if (accepted) {
+		for (String type: types) {
+			wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, type.utf8().get_data());
+			wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+		}
+	} else {
+		/*wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, "");
+		wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE, WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE);*/
+	}
+
+
 }
 
 
@@ -2212,15 +2227,14 @@ void WaylandThread::_wl_data_device_on_motion(void *data, struct wl_data_device 
 	SeatState *ss = (SeatState *)data;
 	WaylandThread *wayland_thread = ss->wayland_thread;
 	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
-	if (os) {
 
+	if (os) {
 		Ref<DropDataEventMessage> msg;
 		msg.instantiate();
-		msg->status = DisplayServer::SystemDragStatus::SYSTEM_DRAG_ENTER;
+		msg->status = DragDrop::SystemDropStatus::DRAG_ENTER;
 		msg->id = ss->dnd_id;
-		msg->position = Point2(wl_fixed_to_double(x), wl_fixed_to_double(y));
-		msg->mime_type = "text/uri-list";
-
+		msg->position = Vector2i(wl_fixed_to_double(x), wl_fixed_to_double(y));
+		msg->type = DragDrop::get_singleton()->natives_to_types_linux(os->mime_types);
 		wayland_thread->push_message(msg);
 	}
 }

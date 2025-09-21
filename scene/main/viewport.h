@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "core/os/drag_drop.h"
 #include "scene/main/node.h"
 #include "scene/resources/texture.h"
 
@@ -615,7 +616,7 @@ public:
 	Vector2 get_camera_rect_size() const;
 
 	void push_text_input(const String &p_text);
-	bool can_system_drop(const Vector2i& p_position, const String& p_mime_type);
+	bool can_system_drop(const Vector2i& p_position, const Array &p_data_types);
 	void push_drop(const String &p_mime, const Variant &p_data);
 	void push_input(const Ref<InputEvent> &p_event, bool p_local_coords = false);
 #ifndef DISABLE_DEPRECATED

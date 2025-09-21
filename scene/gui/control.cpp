@@ -2148,12 +2148,12 @@ Variant Control::get_system_drag_data(const Point2 &p_point) {
 	return ret;
 }
 
-bool Control::can_system_drop_data(const Point2 &p_point, const String &p_mime) {
+bool Control::can_system_drop_data(const Vector2i &p_position, const Array &p_data_types) {
 	ERR_READ_THREAD_GUARD_V(false);
 	if (data.forward_system_can_drop.is_valid()) {
 		Variant ret;
-		Variant p = p_point;
-		Variant mime = p_mime;
+		Variant p = p_position;
+		Variant mime = p_data_types;
 
 		const Variant *vp[2] = { &p, &mime };
 		Callable::CallError ce;
@@ -2165,11 +2165,11 @@ bool Control::can_system_drop_data(const Point2 &p_point, const String &p_mime) 
 	}
 
 	bool ret = false;
-	GDVIRTUAL_CALL(_can_system_drop_data, p_point, p_mime, ret);
+	GDVIRTUAL_CALL(_can_system_drop_data, p_position, p_data_types, ret);
 	return ret;
 }
 
-void Control::system_drop_data(const Point2 &p_point, const String &p_mime, const Variant &p_data) {
+void Control::system_drop_data(const Point2 &p_point, const DragDrop::DataType &p_data_type, const Variant &p_data) {
 	ERR_READ_THREAD_GUARD;
 	if (data.forward_system_drop.is_valid()) {
 		Variant ret;
@@ -2183,7 +2183,7 @@ void Control::system_drop_data(const Point2 &p_point, const String &p_mime, cons
 		return;
 	}
 
-	GDVIRTUAL_CALL(_drop_system_data, p_point, p_mime, p_data);
+	GDVIRTUAL_CALL(_drop_system_data, p_point, p_data_type, p_data);
 }
 
 String Control::get_accessibility_container_name(const Node *p_node) const {
@@ -4459,7 +4459,7 @@ void Control::_bind_methods() {
 	GDVIRTUAL_BIND(_make_custom_tooltip, "for_text");
 
 	GDVIRTUAL_BIND(_get_system_drag_data, "position");
-	GDVIRTUAL_BIND(_can_system_drop_data, "position", "mime");
+	GDVIRTUAL_BIND(_can_system_drop_data, "position", "types");
 	GDVIRTUAL_BIND(_drop_system_data, "position", "mime", "data");
 
 	GDVIRTUAL_BIND(_accessibility_get_contextual_info);

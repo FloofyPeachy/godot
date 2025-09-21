@@ -32,6 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/debugger/engine_debugger.h"
+#include "core/os/drag_drop.h"
 #include "core/templates/pair.h"
 #include "core/templates/sort_array.h"
 #include "scene/2d/audio_listener_2d.h"
@@ -63,6 +64,8 @@
 #ifndef PHYSICS_3D_DISABLED
 #include "scene/3d/physics/collision_object_3d.h"
 #endif // PHYSICS_3D_DISABLED
+
+class DragDrop;
 
 void ViewportTexture::setup_local_to_scene() {
 	// For the same target viewport, setup is only allowed once to prevent multiple free or multiple creations.
@@ -2795,7 +2798,7 @@ void Viewport::push_text_input(const String &p_text) {
 	}
 }
 
-bool Viewport::can_system_drop(const Vector2i &p_position, const String &p_mime_type) {
+bool Viewport::can_system_drop(const Vector2i &p_position, const Array &p_data_types) {
 
 	Window *receiving_window = get_window();
 	if (receiving_window != NULL) {
@@ -2803,10 +2806,9 @@ bool Viewport::can_system_drop(const Vector2i &p_position, const String &p_mime_
 		pos -= receiving_window->get_position(); // make window-local
 		pos = receiving_window->get_final_transform().affine_inverse().xform(pos);
 		Control *over = gui_find_control(p_position);
-		print_line(pos);
+		print_line(over->get_name());
 		if (over != nullptr) {
-			print_line(over->get_name());
-			return over->can_system_drop_data(p_position, p_mime_type);
+			return over->can_system_drop_data(p_position, p_data_types);
 		}
 	}
 
