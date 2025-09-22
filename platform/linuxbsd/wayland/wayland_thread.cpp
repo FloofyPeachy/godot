@@ -30,6 +30,7 @@
 
 #include "wayland_thread.h"
 
+#include "dnd_mapping_wayland.h"
 #include "core/os/drag_drop.h"
 #include "thirdparty/linuxbsd_headers/wayland/wayland-client-protocol.h"
 
@@ -147,7 +148,6 @@ int WaylandThread::_allocate_shm_file(size_t size) {
 
 // Return the content of a wl_data_offer.
 Vector<uint8_t> WaylandThread::_wl_data_offer_read(struct wl_display *p_display, const char *p_mime, struct wl_data_offer *p_offer) {
-
 	if (!p_offer) {
 		return Vector<uint8_t>();
 	}
@@ -1239,19 +1239,23 @@ void WaylandThread::_xdg_toplevel_on_configure(void *data, struct xdg_toplevel *
 		switch (*state) {
 			case XDG_TOPLEVEL_STATE_MAXIMIZED: {
 				ws->mode = DisplayServer::WINDOW_MODE_MAXIMIZED;
-			} break;
+			}
+			break;
 
 			case XDG_TOPLEVEL_STATE_FULLSCREEN: {
 				ws->mode = DisplayServer::WINDOW_MODE_FULLSCREEN;
-			} break;
+			}
+			break;
 
 			case XDG_TOPLEVEL_STATE_SUSPENDED: {
 				ws->suspended = true;
-			} break;
+			}
+			break;
 
 			default: {
 				// We don't care about the other states (for now).
-			} break;
+			}
+			break;
 		}
 	}
 
@@ -1289,17 +1293,21 @@ void WaylandThread::_xdg_toplevel_on_wm_capabilities(void *data, struct xdg_topl
 		switch (*capability) {
 			case XDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE: {
 				ws->can_maximize = true;
-			} break;
+			}
+			break;
 			case XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN: {
 				ws->can_fullscreen = true;
-			} break;
+			}
+			break;
 
 			case XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE: {
 				ws->can_minimize = true;
-			} break;
+			}
+			break;
 
 			default: {
-			} break;
+			}
+			break;
 		}
 	}
 }
@@ -1692,11 +1700,13 @@ void WaylandThread::_wl_pointer_on_axis(void *data, struct wl_pointer *wl_pointe
 	switch (axis) {
 		case WL_POINTER_AXIS_VERTICAL_SCROLL: {
 			pd.scroll_vector.y = wl_fixed_to_double(value);
-		} break;
+		}
+		break;
 
 		case WL_POINTER_AXIS_HORIZONTAL_SCROLL: {
 			pd.scroll_vector.x = wl_fixed_to_double(value);
-		} break;
+		}
+		break;
 	}
 
 	pd.button_time = time;
@@ -2158,6 +2168,8 @@ void WaylandThread::_wl_data_device_on_data_offer(void *data, struct wl_data_dev
 	wl_data_offer_add_listener(id, &wl_data_offer_listener, memnew(OfferState));
 }
 
+
+
 void WaylandThread::_wl_data_device_on_enter(void *data, struct wl_data_device *wl_data_device, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
 	WindowState *ws = wl_surface_get_window_state(surface);
 	if (!ws) {
@@ -2175,13 +2187,16 @@ void WaylandThread::_wl_data_device_on_enter(void *data, struct wl_data_device *
 	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
 	if (os) {
 
-			Ref<DropDataEventMessage> msg;
-			msg.instantiate();
-			msg->status = DragDrop::SystemDropStatus::DRAG_ENTER;
-			msg->id = ss->dnd_id;
-			msg->position = ss->pointer_data_buffer.position;
-			msg->type = DragDrop::get_singleton()->natives_to_types_linux(os->mime_types);
-			wayland_thread->push_message(msg);
+		Ref<DragDropEnter> event;
+		event.instantiate();
+		event->set_position(Vector2i(wl_fixed_to_double(x), wl_fixed_to_double(y)));
+		event->set_types(DnDMappingWayland::get_types_array(os->mime_types));
+
+		Ref<DropEventMessage> msg;
+		msg.instantiate();
+		msg->event = Ref<DragDropEvent>(event);
+		msg->id = ws->id;
+		wayland_thread->push_message(msg);
 
 	}
 
@@ -2189,33 +2204,50 @@ void WaylandThread::_wl_data_device_on_enter(void *data, struct wl_data_device *
 	//TODO: regular file ones.
 	/*wl_data_offer_accept(id, serial, "text/uri-list");
 	wl_data_offer_set_actions(id, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);*/
-
-
 }
 
 void WaylandThread::accept_type(Vector<DragDrop::DataType> data_types, const bool &accepted) {
 	SeatState *ss = wl_seat_get_seat_state(wl_seat_current);
-	Vector<String> types =  DragDrop::get_singleton()->types_to_natives_linux(data_types);
+	Vector<String> types = DnDMappingWayland::get_natives(data_types);
 
-	if (accepted) {
-		for (String type: types) {
-			wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, type.utf8().get_data());
-			wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+	if (ss->wl_data_offer_dnd) {
+		if (accepted) {
+			for (String type : types) {
+				wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, type.utf8().get_data());
+				wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+			}
+		} else {
+			wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, nullptr);
+			wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE, WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE);
 		}
-	} else {
-		/*wl_data_offer_accept(ss->wl_data_offer_dnd, ss->dnd_enter_serial, "");
-		wl_data_offer_set_actions(ss->wl_data_offer_dnd, WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE, WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE);*/
 	}
-
 
 }
 
 
 void WaylandThread::_wl_data_device_on_leave(void *data, struct wl_data_device *wl_data_device) {
 	SeatState *ss = (SeatState *)data;
+	WaylandThread *wayland_thread = ss->wayland_thread;
 	ERR_FAIL_NULL(ss);
 
 	if (ss->wl_data_offer_dnd) {
+
+		OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
+		if (os) {
+
+			Ref<DragDropExit> event;
+			event.instantiate();
+			event->set_position(Vector2i(0,0));
+			event->set_types(DnDMappingWayland::get_types_array(os->mime_types));
+
+			Ref<DropEventMessage> msg;
+			msg.instantiate();
+			msg->event = event;
+			msg->id = ss->dnd_id;
+			wayland_thread->push_message(msg);
+
+		}
+
 		memdelete(wl_data_offer_get_offer_state(ss->wl_data_offer_dnd));
 		wl_data_offer_destroy(ss->wl_data_offer_dnd);
 		ss->wl_data_offer_dnd = nullptr;
@@ -2229,13 +2261,17 @@ void WaylandThread::_wl_data_device_on_motion(void *data, struct wl_data_device 
 	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
 
 	if (os) {
-		Ref<DropDataEventMessage> msg;
+		Ref<DragDropMotion> event;
+		event.instantiate();
+		event->set_position(Vector2i(wl_fixed_to_double(x), wl_fixed_to_double(y)));
+		event->set_types(DnDMappingWayland::get_types_array(os->mime_types));
+
+		Ref<DropEventMessage> msg;
 		msg.instantiate();
-		msg->status = DragDrop::SystemDropStatus::DRAG_ENTER;
+		msg->event = event;
 		msg->id = ss->dnd_id;
-		msg->position = Vector2i(wl_fixed_to_double(x), wl_fixed_to_double(y));
-		msg->type = DragDrop::get_singleton()->natives_to_types_linux(os->mime_types);
 		wayland_thread->push_message(msg);
+		os->pointer_position = Point2(wl_fixed_to_double(x), wl_fixed_to_double(y));
 	}
 }
 
@@ -2249,7 +2285,7 @@ void WaylandThread::_wl_data_device_on_drop(void *data, struct wl_data_device *w
 	OfferState *os = wl_data_offer_get_offer_state(ss->wl_data_offer_dnd);
 	ERR_FAIL_NULL(os);
 
-	if (os) {
+	/*if (os) {
 		Ref<DropFilesEventMessage> msg;
 		msg.instantiate();
 		msg->id = ss->dnd_id;
@@ -2264,6 +2300,35 @@ void WaylandThread::_wl_data_device_on_drop(void *data, struct wl_data_device *w
 		wayland_thread->push_message(msg);
 
 		wl_data_offer_finish(ss->wl_data_offer_dnd);
+	}*/
+
+	if (os) {
+		Variant vData;
+
+		DragDrop::DataType fType = DragDrop::DataType::UNKNOWN;
+		for (String s : os->mime_types) {
+			DragDrop::DataType type = DnDMappingWayland::get_type(s);
+			if (type != DragDrop::DataType::UNKNOWN) {
+				Vector<uint8_t> rawData = _wl_data_offer_read(wayland_thread->wl_display, s.utf8().get_data(), ss->wl_data_offer_dnd);
+				vData = DnDMappingWayland::variant_from_native(type, rawData);
+				fType = type;
+				break;
+			}
+		}
+
+		Ref<DragDropDone> event;
+		event.instantiate();
+		event->set_position(os->pointer_position);
+		event->set_type(fType);
+		event->set_data(vData);
+
+		Ref<DropEventMessage> msg;
+		msg.instantiate();
+		msg->event = event;
+		msg->id = ss->dnd_id;
+		wayland_thread->push_message(msg);
+
+
 	}
 
 	memdelete(wl_data_offer_get_offer_state(ss->wl_data_offer_dnd));
@@ -2291,7 +2356,6 @@ void WaylandThread::_wl_data_offer_on_offer(void *data, struct wl_data_offer *wl
 	if (os) {
 		os->mime_types.insert(String::utf8(mime_type));
 	}
-
 }
 
 void WaylandThread::_wl_data_offer_on_source_actions(void *data, struct wl_data_offer *wl_data_offer, uint32_t source_actions) {
@@ -2957,22 +3021,28 @@ void WaylandThread::_wp_text_input_on_preedit_string(void *data, struct zwp_text
 	int32_t cursor_end_utf32 = 0;
 	for (int i = 0; i < ss->ime_text.length(); i++) {
 		uint32_t c = ss->ime_text[i];
-		if (c <= 0x7f) { // 7 bits.
+		if (c <= 0x7f) {
+			// 7 bits.
 			cursor_begin -= 1;
 			cursor_end -= 1;
-		} else if (c <= 0x7ff) { // 11 bits
+		} else if (c <= 0x7ff) {
+			// 11 bits
 			cursor_begin -= 2;
 			cursor_end -= 2;
-		} else if (c <= 0xffff) { // 16 bits
+		} else if (c <= 0xffff) {
+			// 16 bits
 			cursor_begin -= 3;
 			cursor_end -= 3;
-		} else if (c <= 0x001fffff) { // 21 bits
+		} else if (c <= 0x001fffff) {
+			// 21 bits
 			cursor_begin -= 4;
 			cursor_end -= 4;
-		} else if (c <= 0x03ffffff) { // 26 bits
+		} else if (c <= 0x03ffffff) {
+			// 26 bits
 			cursor_begin -= 5;
 			cursor_end -= 5;
-		} else if (c <= 0x7fffffff) { // 31 bits
+		} else if (c <= 0x7fffffff) {
+			// 31 bits
 			cursor_begin -= 6;
 			cursor_end -= 6;
 		} else {
@@ -3116,7 +3186,6 @@ struct wl_display *WaylandThread::get_wl_display() const {
 }
 
 
-
 // NOTE: Stuff like libdecor can (and will) register foreign proxies which
 // aren't formatted as we like. This method is needed to detect whether a proxy
 // has our tag. Also, be careful! The proxy has to be manually tagged or it
@@ -3172,6 +3241,7 @@ WaylandThread::TabletToolState *WaylandThread::wp_tablet_tool_get_state(struct z
 
 	return nullptr;
 }
+
 // Returns the wl_data_offer's `OfferState`, otherwise `nullptr`.
 // NOTE: This will fail if the output isn't tagged as ours.
 WaylandThread::OfferState *WaylandThread::wl_data_offer_get_offer_state(struct wl_data_offer *p_offer) {
@@ -3792,28 +3862,36 @@ void WaylandThread::window_start_resize(DisplayServer::WindowResizeEdge p_edge, 
 		switch (p_edge) {
 			case DisplayServer::WINDOW_EDGE_TOP_LEFT: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_TOP: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_TOP_RIGHT: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_LEFT: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_RIGHT: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_BOTTOM_LEFT: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_BOTTOM: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_BOTTOM_RIGHT: {
 				edge = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
-			} break;
+			}
+			break;
 			default:
 				break;
 		}
@@ -3826,28 +3904,36 @@ void WaylandThread::window_start_resize(DisplayServer::WindowResizeEdge p_edge, 
 		switch (p_edge) {
 			case DisplayServer::WINDOW_EDGE_TOP_LEFT: {
 				edge = LIBDECOR_RESIZE_EDGE_TOP_LEFT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_TOP: {
 				edge = LIBDECOR_RESIZE_EDGE_TOP;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_TOP_RIGHT: {
 				edge = LIBDECOR_RESIZE_EDGE_TOP_RIGHT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_LEFT: {
 				edge = LIBDECOR_RESIZE_EDGE_LEFT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_RIGHT: {
 				edge = LIBDECOR_RESIZE_EDGE_RIGHT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_BOTTOM_LEFT: {
 				edge = LIBDECOR_RESIZE_EDGE_BOTTOM_LEFT;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_BOTTOM: {
 				edge = LIBDECOR_RESIZE_EDGE_BOTTOM;
-			} break;
+			}
+			break;
 			case DisplayServer::WINDOW_EDGE_BOTTOM_RIGHT: {
 				edge = LIBDECOR_RESIZE_EDGE_BOTTOM_RIGHT;
-			} break;
+			}
+			break;
 			default:
 				break;
 		}
@@ -3988,7 +4074,7 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 #ifdef LIBDECOR_ENABLED
 	if ((!ws.wl_surface || !ws.xdg_toplevel) && !ws.libdecor_frame) {
 #else
-	if (!ws.wl_surface || !ws.xdg_toplevel) {
+		if (!ws.wl_surface || !ws.xdg_toplevel) {
 #endif // LIBDECOR_ENABLED
 		ws.mode = p_window_mode;
 		return;
@@ -3998,14 +4084,16 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 	switch (ws.mode) {
 		case DisplayServer::WINDOW_MODE_WINDOWED: {
 			// Do nothing.
-		} break;
+		}
+		break;
 
 		case DisplayServer::WINDOW_MODE_MINIMIZED: {
 			// We can't do much according to the xdg_shell protocol. I have no idea
 			// whether this implies that we should return or who knows what. For now
 			// we'll do nothing.
 			// TODO: Test this properly.
-		} break;
+		}
+		break;
 
 		case DisplayServer::WINDOW_MODE_MAXIMIZED: {
 			// Try to unmaximize. This isn't garaunteed to work actually, so we'll have
@@ -4019,7 +4107,8 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 				libdecor_frame_unset_maximized(ws.libdecor_frame);
 			}
 #endif // LIBDECOR_ENABLED
-		} break;
+		}
+		break;
 
 		case DisplayServer::WINDOW_MODE_FULLSCREEN:
 		case DisplayServer::WINDOW_MODE_EXCLUSIVE_FULLSCREEN: {
@@ -4033,7 +4122,8 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 				libdecor_frame_unset_fullscreen(ws.libdecor_frame);
 			}
 #endif // LIBDECOR_ENABLED
-		} break;
+		}
+		break;
 	}
 
 	// Wait for a configure event and hope that something changed.
@@ -4049,7 +4139,8 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 	switch (p_window_mode) {
 		case DisplayServer::WINDOW_MODE_WINDOWED: {
 			// Do nothing. We're already windowed.
-		} break;
+		}
+		break;
 
 		case DisplayServer::WINDOW_MODE_MINIMIZED: {
 			if (!window_can_set_mode(p_window_id, p_window_mode)) {
@@ -4067,11 +4158,12 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 				libdecor_frame_set_minimized(ws.libdecor_frame);
 			}
 #endif // LIBDECOR_ENABLED
-	   // We have no way to actually detect this state, so we'll have to report it
-	   // manually to the engine (hoping that it worked). In the worst case it'll
-	   // get reset by the next configure event.
+			// We have no way to actually detect this state, so we'll have to report it
+			// manually to the engine (hoping that it worked). In the worst case it'll
+			// get reset by the next configure event.
 			ws.mode = DisplayServer::WINDOW_MODE_MINIMIZED;
-		} break;
+		}
+		break;
 
 		case DisplayServer::WINDOW_MODE_MAXIMIZED: {
 			if (ws.xdg_toplevel) {
@@ -4083,7 +4175,8 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 				libdecor_frame_set_maximized(ws.libdecor_frame);
 			}
 #endif // LIBDECOR_ENABLED
-		} break;
+		}
+		break;
 
 		case DisplayServer::WINDOW_MODE_FULLSCREEN:
 		case DisplayServer::WINDOW_MODE_EXCLUSIVE_FULLSCREEN: {
@@ -4096,10 +4189,12 @@ void WaylandThread::window_try_set_mode(DisplayServer::WindowID p_window_id, Dis
 				libdecor_frame_set_fullscreen(ws.libdecor_frame, nullptr);
 			}
 #endif // LIBDECOR_ENABLED
-		} break;
+		}
+		break;
 
 		default: {
-		} break;
+		}
+		break;
 	}
 }
 
@@ -4254,6 +4349,7 @@ DisplayServer::WindowID WaylandThread::pointer_get_pointed_window_id() const {
 
 	return DisplayServer::INVALID_WINDOW_ID;
 }
+
 DisplayServer::WindowID WaylandThread::pointer_get_last_pointed_window_id() const {
 	SeatState *ss = wl_seat_get_seat_state(wl_seat_current);
 
@@ -4372,7 +4468,7 @@ Error WaylandThread::init() {
 #endif // SOWRAP_ENABLED
 
 	KeyMappingXKB::initialize();
-
+	DnDMappingWayland::initialize();
 	wl_display = wl_display_connect(nullptr);
 	ERR_FAIL_NULL_V_MSG(wl_display, ERR_CANT_CREATE, "Can't connect to a Wayland display.");
 

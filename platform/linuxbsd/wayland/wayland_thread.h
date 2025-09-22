@@ -135,12 +135,17 @@ public:
 		Vector<String> files;
 	};
 
-	class DropDataEventMessage : public WindowMessage {
-		GDSOFTCLASS(DropDataEventMessage, WindowMessage);
+	class DropEventMessage : public WindowMessage {
+		GDSOFTCLASS(DropEventMessage, WindowMessage);
 	public:
-		DragDrop::SystemDropStatus status;
+		Ref<DragDropEvent> event;
+	};
+
+	class DropDoneEventMessage : public WindowMessage {
+		GDSOFTCLASS(DropDoneEventMessage, WindowMessage);
+	public:
 		Point2 position;
-		Vector<DragDrop::DataType> type;
+		DragDrop::DataType type;
 		Variant data;
 	};
 
@@ -415,6 +420,7 @@ public:
 
 	struct OfferState {
 		HashSet<String> mime_types;
+		Point2 pointer_position; // Useful when dropping is finished.
 	};
 
 	struct SeatState {
@@ -661,6 +667,7 @@ private:
 	void _accept_mime(String &p_mime);
 	static void _wl_data_device_on_leave(void *data, struct wl_data_device *wl_data_device);
 	static void _wl_data_device_on_motion(void *data, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y);
+	void variant_to_raw(DragDrop::DataType &data_type, Vector<uint8_t> &data);
 	static void _wl_data_device_on_drop(void *data, struct wl_data_device *wl_data_device);
 	static void _wl_data_device_on_selection(void *data, struct wl_data_device *wl_data_device, struct wl_data_offer *id);
 

@@ -616,8 +616,8 @@ public:
 	Vector2 get_camera_rect_size() const;
 
 	void push_text_input(const String &p_text);
-	bool can_system_drop(const Vector2i& p_position, const Array &p_data_types);
-	void push_drop(const String &p_mime, const Variant &p_data);
+	bool can_system_drop(const Ref<UnfinishedDragDropEvent>& event);
+	void push_drop(const Ref<DragDropDone>& event);
 	void push_input(const Ref<InputEvent> &p_event, bool p_local_coords = false);
 #ifndef DISABLE_DEPRECATED
 	void push_unhandled_input(const Ref<InputEvent> &p_event, bool p_local_coords = false);

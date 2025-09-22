@@ -30,6 +30,8 @@
 
 #include "display_server_wayland.h"
 
+#include "dnd_mapping_wayland.h"
+
 #ifdef WAYLAND_ENABLED
 
 #define WAYLAND_DISPLAY_SERVER_DEBUG_LOGS_ENABLED
@@ -72,11 +74,13 @@ String DisplayServerWayland::_get_app_id_from_context(Context p_context) {
 	switch (p_context) {
 		case CONTEXT_EDITOR: {
 			app_id = "org.godotengine.Editor";
-		} break;
+		}
+		break;
 
 		case CONTEXT_PROJECTMAN: {
 			app_id = "org.godotengine.ProjectManager";
-		} break;
+		}
+		break;
 
 		case CONTEXT_ENGINE:
 		default: {
@@ -177,7 +181,8 @@ bool DisplayServerWayland::has_feature(Feature p_feature) const {
 #ifndef DISABLE_DEPRECATED
 		case FEATURE_GLOBAL_MENU: {
 			return (native_menu && native_menu->has_feature(NativeMenu::FEATURE_GLOBAL_MENU));
-		} break;
+		}
+		break;
 #endif
 		case FEATURE_MOUSE:
 		case FEATURE_MOUSE_WARP:
@@ -194,31 +199,36 @@ bool DisplayServerWayland::has_feature(Feature p_feature) const {
 		case FEATURE_SUBWINDOWS:
 		case FEATURE_SELF_FITTING_WINDOWS: {
 			return true;
-		} break;
+		}
+		break;
 
-		//case FEATURE_NATIVE_DIALOG:
-		//case FEATURE_NATIVE_DIALOG_INPUT:
+			//case FEATURE_NATIVE_DIALOG:
+			//case FEATURE_NATIVE_DIALOG_INPUT:
 #ifdef DBUS_ENABLED
 		case FEATURE_NATIVE_DIALOG_FILE:
 		case FEATURE_NATIVE_DIALOG_FILE_EXTRA:
 		case FEATURE_NATIVE_DIALOG_FILE_MIME: {
 			return (portal_desktop && portal_desktop->is_supported() && portal_desktop->is_file_chooser_supported());
-		} break;
+		}
+		break;
 		case FEATURE_NATIVE_COLOR_PICKER: {
 			return (portal_desktop && portal_desktop->is_supported() && portal_desktop->is_screenshot_supported());
-		} break;
+		}
+		break;
 #endif
 
 #ifdef SPEECHD_ENABLED
 		case FEATURE_TEXT_TO_SPEECH: {
 			return true;
-		} break;
+		}
+		break;
 #endif
 
 #ifdef ACCESSKIT_ENABLED
 		case FEATURE_ACCESSIBILITY_SCREEN_READER: {
 			return (accessibility_driver != nullptr);
-		} break;
+		}
+		break;
 #endif
 
 		default: {
@@ -386,12 +396,14 @@ void DisplayServerWayland::_mouse_update_mode() {
 	switch (wanted_mouse_mode) {
 		case DisplayServer::MOUSE_MODE_CAPTURED: {
 			constraint = WaylandThread::PointerConstraint::LOCKED;
-		} break;
+		}
+		break;
 
 		case DisplayServer::MOUSE_MODE_CONFINED:
 		case DisplayServer::MOUSE_MODE_CONFINED_HIDDEN: {
 			constraint = WaylandThread::PointerConstraint::CONFINED;
-		} break;
+		}
+		break;
 
 		default: {
 		}
@@ -945,15 +957,18 @@ int64_t DisplayServerWayland::window_get_native_handle(HandleType p_handle_type,
 	switch (p_handle_type) {
 		case DISPLAY_HANDLE: {
 			return (int64_t)wayland_thread.get_wl_display();
-		} break;
+		}
+		break;
 
 		case WINDOW_HANDLE: {
 			return (int64_t)wayland_thread.window_get_wl_surface(p_window);
-		} break;
+		}
+		break;
 
 		case WINDOW_VIEW: {
 			return 0; // Not supported.
-		} break;
+		}
+		break;
 
 #ifdef GLES3_ENABLED
 		case OPENGL_CONTEXT: {
@@ -961,7 +976,8 @@ int64_t DisplayServerWayland::window_get_native_handle(HandleType p_handle_type,
 				return (int64_t)egl_manager->get_context(p_window);
 			}
 			return 0;
-		} break;
+		}
+		break;
 		case EGL_DISPLAY: {
 			if (egl_manager) {
 				return (int64_t)egl_manager->get_display(p_window);
@@ -978,7 +994,8 @@ int64_t DisplayServerWayland::window_get_native_handle(HandleType p_handle_type,
 
 		default: {
 			return 0;
-		} break;
+		}
+		break;
 	}
 }
 
@@ -1262,17 +1279,20 @@ void DisplayServerWayland::window_set_flag(WindowFlags p_flag, bool p_enabled, D
 	switch (p_flag) {
 		case WINDOW_FLAG_BORDERLESS: {
 			wayland_thread.window_set_borderless(p_window_id, p_enabled);
-		} break;
+		}
+		break;
 
 		case WINDOW_FLAG_POPUP: {
 			ERR_FAIL_COND_MSG(p_window_id == MAIN_WINDOW_ID, "Main window can't be popup.");
 			ERR_FAIL_COND_MSG(wd.visible && (wd.flags & WINDOW_FLAG_POPUP_BIT) != p_enabled, "Popup flag can't changed while window is opened.");
-		} break;
+		}
+		break;
 
 		case WINDOW_FLAG_POPUP_WM_HINT: {
 			ERR_FAIL_COND_MSG(p_window_id == MAIN_WINDOW_ID, "Main window can't have popup hint.");
 			ERR_FAIL_COND_MSG(wd.visible && (wd.flags & WINDOW_FLAG_POPUP_WM_HINT_BIT) != p_enabled, "Popup hint can't changed while window is opened.");
-		} break;
+		}
+		break;
 
 		default: {
 		}
@@ -1572,6 +1592,7 @@ Key DisplayServerWayland::keyboard_get_keycode_from_physical(Key p_keycode) cons
 	return key;
 }
 
+
 bool DisplayServerWayland::color_picker(const Callable &p_callback) {
 #ifdef DBUS_ENABLED
 	if (!portal_desktop) {
@@ -1707,32 +1728,35 @@ void DisplayServerWayland::process_events() {
 			}
 			continue;
 		}
-		Ref<WaylandThread::DropDataEventMessage> dropdata_msg = msg;
-		if (dropdata_msg.is_valid()) {
-			WindowData wd = windows[dropdata_msg->id];
+
+		Ref<WaylandThread::DropEventMessage> drop_event_msg = msg;
+		if (drop_event_msg.is_valid()) {
+			WindowData wd = windows[drop_event_msg->id];
+
+			Ref<DragDropEvent> event = drop_event_msg->event;
 
 			if (wd.drop_data_callback.is_valid()) {
-				Vector<DragDrop::DataType> types = dropdata_msg->type;
-				Variant v_pos = dropdata_msg->position;
-				Array arr;
-				for (int i = 0; i < types.size(); i++) {
-					arr.push_back(types[i]);
-				}
-				Variant v_types = arr;
-				Variant v_data;
-				const Variant *v_args[3] = { &v_pos, &v_types, &v_data };
+				Variant v_event = event;
+
+				const Variant *v_args[1] = { &v_event };
+
 				Variant ret;
 				Callable::CallError ce;
 
-				wd.drop_data_callback.callp((const Variant **)&v_args, 3, ret, ce);
+				wd.drop_data_callback.callp((const Variant **)&v_args, 1, ret, ce);
 
 				if (ce.error != Callable::CallError::CALL_OK) {
 					ERR_PRINT(vformat("Failed to execute drop data callback: %s.", Variant::get_callable_error_text(wd.drop_data_callback, v_args, 1, ce)));
 				}
-
-				if (ret.get_type() == Variant::BOOL) {
-					wayland_thread.accept_type(dropdata_msg->type, ret.operator bool());
+				Ref<UnfinishedDragDropEvent> unfinished_event = event;
+				if (unfinished_event.is_valid()) {
+					Variant v_types = unfinished_event->get_types();
+					if (ret.get_type() == Variant::BOOL) {
+						wayland_thread.accept_type(DnDMappingWayland::get_types_array(v_types), ret.operator bool());
+					}
 				}
+
+				continue;
 			}
 			continue;
 		}
@@ -1820,7 +1844,8 @@ void DisplayServerWayland::process_events() {
 			} else if (suspend_state == SuspendState::CAPABILITY) {
 				DEBUG_LOG_WAYLAND("Suspending. Reason: capability.");
 			}
-		} break;
+		}
+		break;
 
 		case SuspendState::TIMEOUT: {
 			// Certain compositors might not report the "suspended" wm_capability flag.
@@ -1834,7 +1859,8 @@ void DisplayServerWayland::process_events() {
 			// Since we're not rendering, nothing is committing the windows'
 			// surfaces. We have to do it ourselves.
 			wayland_thread.commit_surfaces();
-		} break;
+		}
+		break;
 
 		case SuspendState::CAPABILITY: {
 			// If we suspended by capability we can assume that it will be reset when
@@ -1843,7 +1869,8 @@ void DisplayServerWayland::process_events() {
 				suspend_state = SuspendState::NONE;
 				DEBUG_LOG_WAYLAND("Unsuspending from capability.");
 			}
-		} break;
+		}
+		break;
 	}
 
 #ifdef DBUS_ENABLED
@@ -2033,12 +2060,12 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 			int prime_idx = -1;
 
 			if (getenv("PRIMUS_DISPLAY") ||
-					getenv("PRIMUS_libGLd") ||
-					getenv("PRIMUS_libGLa") ||
-					getenv("PRIMUS_libGL") ||
-					getenv("PRIMUS_LOAD_GLOBAL") ||
-					getenv("BUMBLEBEE_SOCKET") ||
-					getenv("__NV_PRIME_RENDER_OFFLOAD")) {
+				getenv("PRIMUS_libGLd") ||
+				getenv("PRIMUS_libGLa") ||
+				getenv("PRIMUS_libGL") ||
+				getenv("PRIMUS_LOAD_GLOBAL") ||
+				getenv("BUMBLEBEE_SOCKET") ||
+				getenv("__NV_PRIME_RENDER_OFFLOAD")) {
 				print_verbose("Optirun/primusrun detected. Skipping GPU detection");
 				prime_idx = 0;
 			}
@@ -2052,7 +2079,7 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 
 				for (int i = 0; i < libraries.size(); ++i) {
 					if (FileAccess::exists(libraries[i] + "/libGL.so.1") ||
-							FileAccess::exists(libraries[i] + "/libGL.so")) {
+						FileAccess::exists(libraries[i] + "/libGL.so")) {
 						print_verbose("Custom libGL override detected. Skipping GPU detection");
 						prime_idx = 0;
 					}

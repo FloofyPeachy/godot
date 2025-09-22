@@ -2798,17 +2798,17 @@ void Viewport::push_text_input(const String &p_text) {
 	}
 }
 
-bool Viewport::can_system_drop(const Vector2i &p_position, const Array &p_data_types) {
+bool Viewport::can_system_drop(const Ref<UnfinishedDragDropEvent> &event) {
 
 	Window *receiving_window = get_window();
 	if (receiving_window != NULL) {
-		Vector2 pos = p_position;
-		pos -= receiving_window->get_position(); // make window-local
-		pos = receiving_window->get_final_transform().affine_inverse().xform(pos);
-		Control *over = gui_find_control(p_position);
-		print_line(over->get_name());
+		Vector2 pos = event->get_position();
+		Array types = event->get_types();
+
+		Control *over = gui_find_control(pos);
 		if (over != nullptr) {
-			return over->can_system_drop_data(p_position, p_data_types);
+			print_line(over->get_name());
+			return over->can_system_drop_data(pos, types);
 		}
 	}
 
@@ -2816,8 +2816,17 @@ bool Viewport::can_system_drop(const Vector2i &p_position, const Array &p_data_t
 	return false;
 }
 
-void Viewport::push_drop(const String &p_mime, const Variant &p_data) {
+void Viewport::push_drop(const Ref<DragDropDone> &event) {
+	Window *receiving_window = get_window();
+	if (receiving_window != NULL) {
+		Vector2 pos = event->get_position();
 
+		Control *over = gui_find_control(pos);
+		if (over != nullptr) {
+			print_line("Dropped on " + over->get_name());
+			return over->system_drop_data(pos, event->get_type(), event->get_data());
+		}
+	}
 }
 
 Viewport::SubWindowResize Viewport::_sub_window_get_resize_margin(Window *p_subwindow, const Point2 &p_point) {
