@@ -1852,7 +1852,6 @@ bool Window::_window_drop_data(const Ref<DragDropEvent> &event) {
 
 	Ref<DragDropDone> done_event = event;
 	if (done_event.is_valid()) {
-		print_line("dropping!!");
 		push_drop(done_event);
 	}
 	return true;

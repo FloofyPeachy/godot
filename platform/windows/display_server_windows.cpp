@@ -1903,6 +1903,10 @@ void DisplayServerWindows::window_set_drop_files_callback(const Callable &p_call
 	}
 }
 
+void DisplayServerWindows::window_set_drop_data_callback(const Callable &p_callable, DisplayServer::WindowID p_window_id) {
+	//TODO: do it
+}
+
 void DisplayServerWindows::window_set_title(const String &p_title, WindowID p_window) {
 	_THREAD_SAFE_METHOD_
 
