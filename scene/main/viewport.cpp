@@ -2807,7 +2807,6 @@ bool Viewport::can_system_drop(const Ref<UnfinishedDragDropEvent> &event) {
 
 		Control *over = gui_find_control(pos);
 		if (over != nullptr) {
-			print_line(over->get_name());
 			return over->can_system_drop_data(pos, types);
 		}
 	}
@@ -2823,7 +2822,6 @@ void Viewport::push_drop(const Ref<DragDropDone> &event) {
 
 		Control *over = gui_find_control(pos);
 		if (over != nullptr) {
-			print_line("Dropped on " + over->get_name());
 			return over->system_drop_data(pos, event->get_type(), event->get_data());
 		}
 	}
